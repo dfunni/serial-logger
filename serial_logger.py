@@ -86,7 +86,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description)
 
     parser.add_argument('-f', '--filename', type=str, help='ouput filename',
-                        default='serial_log.txt')
+                        default='log.txt')
     parser.add_argument('-p', '--port', type=str,
                         help="""port name, default None. If None the user will 
                         be asked to select a port from a list.""", 
