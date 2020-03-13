@@ -93,7 +93,7 @@ if __name__ == "__main__":
                         default=None)
     parser.add_argument('--baudrate', type=int, help='int, default 9600',
                         default=9600)
-    parser.add_argument('-b', '--bytesize', type=int, 
+    parser.add_argument('--bytesize', type=int, 
                         help='int, default = 8', 
                         default=8)
     parser.add_argument('--parity', type=str,
@@ -104,7 +104,7 @@ if __name__ == "__main__":
                         MARK, 
                         SPACE""",
                         default='NONE')
-    parser.add_argument('-s', '--stopbits', type=float, 
+    parser.add_argument('--stopbits', type=float, 
                         help="""Number of stop bits. Possible values: 
                         *1, 1.5, 2""",
                         default=1)
