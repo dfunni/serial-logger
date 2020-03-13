@@ -26,20 +26,20 @@ def _ask_for_port():
             pass
         else:
             port = ports[index]
-            _activate_port(port)
+#            _activate_port(port)
         return port
 
 
-def _activate_port(port):
-    """This function ensures serial port is activated in linux."""
-    port_permissions = subprocess.check_output('ls -la ' + port, 
-                                               shell=True)[7:10].decode('utf-8')
-    if port_permissions == '---':
-        cmd = 'sudo chmod 666 ' + port
-        print("Port needs to be enabled...")
-        print('running command: ' + cmd)
-        os.system(cmd)
-    print("Port open!")
+#def _activate_port(port):
+#    """This function ensures serial port is activated in linux."""
+#    port_permissions = subprocess.check_output('ls -la ' + port, 
+#                                               shell=True)[7:10].decode('utf-8')
+#    if port_permissions == '---':
+#        cmd = 'sudo chmod 664 ' + port
+#        print("Port needs to be enabled...")
+#        print('running command: ' + cmd)
+#        os.system(cmd)
+#    print("Port open!")
 
 
 def main(filename, port, baudrate,  bytesize=8, parity="NONE",  stopbits=1,
