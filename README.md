@@ -11,7 +11,7 @@ usage: serial_logger.py [-h] [-f FILENAME] [-p PORT] [--baudrate BAUDRATE] [--by
   -p, --port :       str, port name, if None the user will be asked to select a port from a list (default None)<br />
   --baudrate :       int (default 9600)<br />
   --bytesize :       int (default = 8)<br />
-  --parity :         str, enable parity checking. Possible values: NONE, EVEN, ODD, MARK, SPACE (default=NONE)<br />
+  --parity :         str, enable parity checking. Possible values: NONE, EVEN, ODD, MARK, SPACE (default="NONE")<br />
   --stopbits :       float, number of stop bits. Possible values: 1, 1.5, 2, (default=1)<br />
   --timeout :        float, set a read timeout value (default=None)<br />
   --xonxoff :        bool, enable software flow control (default=False)<br />
