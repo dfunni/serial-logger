@@ -1,8 +1,8 @@
 # serial-logger
 Command line executable logger of serial data to file.
 
-usage: serial_logger.py [-h] [-f FILENAME] [-p PORT] [--baudrate BAUDRATE] [-b BYTESIZE]<br />
-       [--parity PARITY] [-s STOPBITS] [--timeout TIMEOUT] [--xonxoff XONXOFF]<br />
+usage: serial_logger.py [-h] [-f FILENAME] [-p PORT] [--baudrate BAUDRATE] [--bytesize BYTESIZE]<br />
+       [--parity PARITY] [--stopbits STOPBITS] [--timeout TIMEOUT] [--xonxoff XONXOFF]<br />
        [--rtscts RTSCTS]
        
 ## optional arguments:
