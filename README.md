@@ -5,7 +5,7 @@ usage: serial_logger.py [-h] [-f FILENAME] [-p PORT] [--baudrate BAUDRATE] [--by
        [--parity PARITY] [--stopbits STOPBITS] [--timeout TIMEOUT] [--xonxoff XONXOFF]<br />
        [--rtscts RTSCTS]
        
-## Optional command line arguments:
+## Optional arguments:
   -h, --help :       show help message and exit<br />
   -f, --filename :   str, ouput filename (default=serial_log.txt)<br />
   -p, --port :       str, port name, if None the user will be asked to select a port from a list (default None)<br />
