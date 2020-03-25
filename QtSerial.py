@@ -2,7 +2,7 @@
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout
-from PyQt5.QtWidgets import QTextEdit, QComboBox, QPushButton, QLineEdit
+from PyQt5.QtWidgets import QTextEdit, QComboBox, QPushButton, QLineEdit, QLabel
 from PyQt5.QtWidgets import QStatusBar, QAction
 import queue as Queue
 
@@ -13,17 +13,10 @@ import serial
 # module import
 import utilities as ut
 
-WIN_WIDTH, WIN_HEIGHT = 684, 400  # Window size
-SER_TIMEOUT = 0.1  # Timeout for serial Rx
-baudrate = 9600  # Default baud rate
+WIN_WIDTH, WIN_HEIGHT = 600, 1000  # Window size
+SER_TIMEOUT = 0.01  # Timeout for serial Rx
 
-
-# Convert a string to bytes
-def str_bytes(s):
-    return s.encode('latin-1')
-
-
-# Convert bytes to string
+# # Convert bytes to string
 def bytes_str(d):
     return d if type(d) is str else "".join([chr(b) for b in d])
 
@@ -44,35 +37,43 @@ class window(QMainWindow):
         self.resize(WIN_WIDTH, WIN_HEIGHT)  # Set window size
         sys.stdout = self  # Redirect sys.stdout to self
 
-        self.ser_initF = False
         self.ser_connectedF = False
         self.recordF = False
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
 
+        # Menu bar
+        self.statusBar = QStatusBar()
+
         self.extractAction = QAction('&Quit', self)
         self.extractAction.setShortcut('Ctrl+Q')
         self.extractAction.setStatusTip('exit')
         self.extractAction.triggered.connect(self.closeEvent)
 
-        self.statusBar = QStatusBar()
-
         self.mainMenu = self.menuBar()
         self.fileMenu = self.mainMenu.addMenu('&File')
         self.fileMenu.addAction(self.extractAction)
 
+        # Text boxes
         self.textbox = QTextEdit(self)
         self.textbox.setReadOnly(True)
         self.text_update.connect(self.append_text)
-
-        self.portSelect = QComboBox(self)
-        self.portSelect.addItems(ut.port_options())
 
         self.fnameBox = QLineEdit(self)
         self.fnameBox.setText("log.txt")
         self.fnameBox.setMaxLength(50)
 
+        # Drop-down menus
+        self.portSelect = QComboBox(self)
+        self.portSelect.addItems(ut.port_options())
+
+        self.baudSelect = QComboBox(self)
+        baud_list = [9600, 14400, 19200, 38400, 57600, 115200, 128000, 256000]
+        baud_list = [str(baud) for baud in baud_list]
+        self.baudSelect.addItems(baud_list)
+
+        # Buttons
         self.cnct_btn = QPushButton('Connect', self)
         self.cnct_btn.clicked.connect(self.connect)
         self.cnct_btn.resize(self.cnct_btn.sizeHint())
@@ -86,36 +87,57 @@ class window(QMainWindow):
         self.pause_btn.clicked.connect(self.pause_log)
         self.pause_btn.resize(self.pause_btn.sizeHint())
 
-        self.stop_btn = QPushButton('Stop', self)
+        self.stop_btn = QPushButton('Disconnect', self)
         self.stop_btn.clicked.connect(self.stop)
         self.stop_btn.resize(self.stop_btn.sizeHint())
 
+        # Labels
+        self.heading1 = QLabel()
+        self.heading1.setText("<strong>Serial Port Connction Options<\strong>")
+        self.heading2 = QLabel()
+        self.heading2.setText("<strong>Logging Options<\strong>")
+        self.l1 = QLabel()
+        self.l1.setText("Serial Port:")
+        self.l2 = QLabel()
+        self.l2.setText("Baud Rate:")
+        self.l3 = QLabel()
+        self.l3.setText("Logfile:       ")
+
+        # Layout
         self.vbox = QVBoxLayout()
         self.hbox0 = QHBoxLayout()
         self.hbox1 = QHBoxLayout()
+        self.hbox2 = QHBoxLayout()
+        self.hbox3 = QHBoxLayout()
         self.centralWidget().setLayout(self.vbox)
 
-        self.vbox.addWidget(self.textbox)
+        self.hbox0.addWidget(self.l1)
         self.hbox0.addWidget(self.portSelect)
-        self.hbox0.addWidget(self.cnct_btn)
-        self.hbox0.addWidget(self.stop_btn)
-        self.hbox1.addWidget(self.fnameBox)
-        self.hbox1.addStretch()
-        self.hbox1.addWidget(self.record_btn)
-        self.hbox1.addWidget(self.pause_btn)
+        self.hbox0.addWidget(self.l2)
+        self.hbox0.addWidget(self.baudSelect)
 
+        self.hbox1.addWidget(self.cnct_btn)
+        self.hbox1.addWidget(self.stop_btn)
+
+        self.hbox2.addWidget(self.l3)
+        self.hbox2.addWidget(self.fnameBox)
+        self.hbox2.addStretch()
+
+        self.hbox3.addWidget(self.record_btn)
+        self.hbox3.addWidget(self.pause_btn)
+
+        self.vbox.addWidget(self.textbox)
+        self.vbox.addWidget(self.heading1)
         self.vbox.addLayout(self.hbox0)
         self.vbox.addLayout(self.hbox1)
-
-    def init_serth(self):
-        self.portname, _ = self.portSelect.currentText().split('  ')
-        # Start serial thread
-        self.serth = SerialThread(self.portname, baudrate)
-        self.ser_initF = True
+        self.vbox.addWidget(self.heading2)
+        self.vbox.addLayout(self.hbox2)
+        self.vbox.addLayout(self.hbox3)
 
     def connect(self):
-        if not self.ser_initF:
-            self.init_serth()
+        self.portname, _ = self.portSelect.currentText().split('  ')
+        self.baudrate = self.baudSelect.currentText()
+        self.serth = SerialThread(self.portname, self.baudrate)
         self.serth.running = True
         self.ser_connectedF = True
         self.serth.start()
@@ -181,14 +203,13 @@ class SerialThread(QtCore.QThread):
         # print(f"Opening {self.portname} at {self.baudrate} baud")
         try:
             self.ser = serial.Serial(self.portname,
-                                     self.baudrate,
-                                     timeout=SER_TIMEOUT)
+                                     self.baudrate)
             time.sleep(SER_TIMEOUT*1.2)
             self.ser.flushInput()
         except:
             self.ser = None
         if not self.ser:
-            print("Can't open port")
+            print("Cannot open port")
             self.running = False
         while self.running:
             try:
