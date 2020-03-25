@@ -9,12 +9,11 @@ import queue as Queue
 import sys
 import time
 import serial
-
-# module import
-import utilities as ut
+from serial.tools.list_ports import comports
 
 WIN_WIDTH, WIN_HEIGHT = 600, 1000  # Window size
 SER_TIMEOUT = 0.01  # Timeout for serial Rx
+
 
 # # Convert bytes to string
 def bytes_str(d):
@@ -24,6 +23,15 @@ def bytes_str(d):
 # Display incoming serial data
 def display(s):
     sys.stdout.write(s)
+
+
+def port_options():
+    """This function was adapted from the pyserial tool miniterm.py."""
+    ports = []
+    for port, desc, _ in sorted(comports()):
+        ports.append(f'{port}  {desc}')
+
+    return ports
 
 
 # Main widget
@@ -66,7 +74,7 @@ class window(QMainWindow):
 
         # Drop-down menus
         self.portSelect = QComboBox(self)
-        self.portSelect.addItems(ut.port_options())
+        self.portSelect.addItems(port_options())
 
         self.baudSelect = QComboBox(self)
         baud_list = [9600, 14400, 19200, 38400, 57600, 115200, 128000, 256000]
