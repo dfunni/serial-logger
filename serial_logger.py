@@ -43,8 +43,8 @@ def _ask_for_port():
 #    print("Port open!")
 
 
-def main(filename, port, baudrate,  bytesize=8, parity="NONE",  stopbits=1,
-         timeout=None, xonxoff=False,  rtscts=False):
+def log(filename, port, baudrate=9600,  bytesize=8, parity="NONE",  stopbits=1,
+        timeout=None, xonxoff=False,  rtscts=False):
     """This is the main function of this program, logs data recieved over
     serial bus as ascii text.
 
@@ -59,6 +59,7 @@ def main(filename, port, baudrate,  bytesize=8, parity="NONE",  stopbits=1,
     xonxoff  -- enable software flow control
     rtcts    -- enable hardware flow control
     """
+
     ser = serial.Serial(port, baudrate, bytesize, parity, stopbits, timeout,
                         xonxoff, rtscts)
     ser.baudrate = baudrate
@@ -133,6 +134,6 @@ if __name__ == "__main__":
     if args.port is None:
         args.port = _ask_for_port()
 
-    main(args.filename, args.port, args.baudrate, args.bytesize,
-         args.parity, args.stopbits, args.timeout, args.xonxoff,
-         args.rtscts)
+    log(args.filename, args.port, args.baudrate, args.bytesize,
+        args.parity, args.stopbits, args.timeout, args.xonxoff,
+        args.rtscts)
