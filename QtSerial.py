@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 from PyQt5 import QtGui, QtCore
-from PyQt5.QtWidgets import QWidget, QApplication, QVBoxLayout, QHBoxLayout
-from PyQt5.QtWidgets import QTextEdit, QComboBox, QPushButton, QLineEdit, QAction
-from PyQt5.QtWidgets import QStatusBar
+from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout
+from PyQt5.QtWidgets import QTextEdit, QComboBox, QPushButton, QLineEdit
+from PyQt5.QtWidgets import QStatusBar, QAction
 import queue as Queue
 
 import sys
@@ -33,84 +34,101 @@ def display(s):
 
 
 # Main widget
-class window(QWidget):
+class window(QMainWindow):
     text_update = QtCore.pyqtSignal(str)
+    log_update = QtCore.pyqtSignal(str)
 
     def __init__(self, *args):
         super(window, self).__init__()
 
         self.resize(WIN_WIDTH, WIN_HEIGHT)  # Set window size
+        sys.stdout = self  # Redirect sys.stdout to self
 
-        extractAction = QAction('&Quit', self)
-        extractAction.setShortcut('Ctrl+Q')
-        extractAction.setStatusTip('exit')
-        extractAction.triggered.connect(self.close_application)
+        self.ser_initF = False
+        self.ser_connectedF = False
+        self.recordF = False
+
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+
+        self.extractAction = QAction('&Quit', self)
+        self.extractAction.setShortcut('Ctrl+Q')
+        self.extractAction.setStatusTip('exit')
+        self.extractAction.triggered.connect(self.closeEvent)
 
         self.statusBar = QStatusBar()
 
-        mainMenu = self.menuBar()
-        fileMenu = mainMenu.addMenu('&File')
-        fileMenu.addAction(extractAction)
+        self.mainMenu = self.menuBar()
+        self.fileMenu = self.mainMenu.addMenu('&File')
+        self.fileMenu.addAction(self.extractAction)
 
         self.textbox = QTextEdit(self)
         self.textbox.setReadOnly(True)
         self.text_update.connect(self.append_text)
 
-        ports, descs = ut.port_options()
         self.portSelect = QComboBox(self)
-        self.portSelect.addItems(ports)
+        self.portSelect.addItems(ut.port_options())
 
         self.fnameBox = QLineEdit(self)
         self.fnameBox.setText("log.txt")
         self.fnameBox.setMaxLength(50)
 
-        cnct_btn = QPushButton('Connect', self)
-        cnct_btn.clicked.connect(self.connect)
-        cnct_btn.resize(cnct_btn.sizeHint())
+        self.cnct_btn = QPushButton('Connect', self)
+        self.cnct_btn.clicked.connect(self.connect)
+        self.cnct_btn.resize(self.cnct_btn.sizeHint())
 
-        record_btn = QPushButton('Record', self)
-        record_btn.clicked.connect(self.record_log)
-        record_btn.resize(record_btn.sizeHint())
+        self.record_btn = QPushButton('Record', self)
+        self.record_btn.clicked.connect(self.record_log)
+        self.record_btn.resize(self.record_btn.sizeHint())
+        self.log_update.connect(self.record)
 
-        pause_btn = QPushButton('Pause', self)
-        pause_btn.clicked.connect(self.pause_log)
-        pause_btn.resize(pause_btn.sizeHint())
+        self.pause_btn = QPushButton('Pause', self)
+        self.pause_btn.clicked.connect(self.pause_log)
+        self.pause_btn.resize(self.pause_btn.sizeHint())
 
-        stop_btn = QPushButton('Stop', self)
-        stop_btn.clicked.connect(self.stop)
-        stop_btn.resize(stop_btn.sizeHint())
+        self.stop_btn = QPushButton('Stop', self)
+        self.stop_btn.clicked.connect(self.stop)
+        self.stop_btn.resize(self.stop_btn.sizeHint())
 
-        vbox = QVBoxLayout()
-        hbox0 = QHBoxLayout()
-        hbox1 = QHBoxLayout()
-        # hbox2 = QHBoxLayout()
+        self.vbox = QVBoxLayout()
+        self.hbox0 = QHBoxLayout()
+        self.hbox1 = QHBoxLayout()
+        self.centralWidget().setLayout(self.vbox)
 
-        # self.setLayout(layout)
-        vbox.addWidget(self.textbox)
-        sys.stdout = self  # Redirect sys.stdout to self
-        hbox0.addWidget(self.portSelect)
-        hbox0.addWidget(cnct_btn)
-        hbox0.addWidget(stop_btn)
-        hbox1.addWidget(self.fnameBox)
-        hbox1.addStretch()
-        hbox1.addWidget(record_btn)
-        hbox1.addWidget(pause_btn)
+        self.vbox.addWidget(self.textbox)
+        self.hbox0.addWidget(self.portSelect)
+        self.hbox0.addWidget(self.cnct_btn)
+        self.hbox0.addWidget(self.stop_btn)
+        self.hbox1.addWidget(self.fnameBox)
+        self.hbox1.addStretch()
+        self.hbox1.addWidget(self.record_btn)
+        self.hbox1.addWidget(self.pause_btn)
 
-        vbox.addLayout(hbox0)
-        vbox.addLayout(hbox1)
-        self.setLayout(vbox)
+        self.vbox.addLayout(self.hbox0)
+        self.vbox.addLayout(self.hbox1)
 
-    def connect(self):
-        self.portname = self.portSelect.currentText()
+    def init_serth(self):
+        self.portname, _ = self.portSelect.currentText().split('  ')
         # Start serial thread
         self.serth = SerialThread(self.portname, baudrate)
+        self.ser_initF = True
+
+    def connect(self):
+        if not self.ser_initF:
+            self.init_serth()
+        self.serth.running = True
+        self.ser_connectedF = True
         self.serth.start()
 
     def record_log(self):
+        if not self.ser_connectedF or not self.serth.running:
+            self.connect()
         self.filename = self.fnameBox.text()
+        self.serth.record = True
+        self.recordF = True
 
     def pause_log(self):
-        pass
+        self.recordF = False
 
     def stop(self):
         self.serth.running = False
@@ -119,6 +137,8 @@ class window(QWidget):
     def write(self, text):  # Handle sys.stdout.write: update display
         # Send signal to synchronise call with main thread
         self.text_update.emit(text)
+        if self.recordF:
+            self.log_update.emit(text)
 
     def append_text(self, text):  # Text display update handler
         cur = self.textbox.textCursor()
@@ -129,13 +149,18 @@ class window(QWidget):
             cur.insertText(head)  # Insert text at cursor
         self.textbox.setTextCursor(cur)  # Update visible cursor
 
-    def close_event(self, event):  # Window closing
-        self.serth.running = False  # Wait until serial thread terminates
-        self.serth.wait()
+    def record(self, text):
+        line = f"{str(time.time())}\t{text}"
+        # print(line)
+        with open(self.filename, "a") as f:
+            f.write(line)
+            f.close()
 
-    def close_application(self):
-        self.close_event()
-        sys.exit(app.exec_())
+    def closeEvent(self, event):  # Window closing, standard Qt syntax
+        if self.ser_connectedF:
+            self.serth.running = False  # Wait until serial thread terminates
+            self.serth.wait()
+        sys.exit()
 
 
 # Thread to handle incoming &amp; outgoing serial data
@@ -143,9 +168,11 @@ class SerialThread(QtCore.QThread):
     # Initialise with serial port details
     def __init__(self, portname, baudrate):
         super(SerialThread, self).__init__()
-        self.portname, self.baudrate = portname, baudrate
+        self.portname = portname
+        self.baudrate = baudrate
         self.txq = Queue.Queue()
         self.running = True
+        # self.record = False
 
     def ser_in(self, s):  # Write incoming serial data to screen
         display(s)
@@ -165,7 +192,8 @@ class SerialThread(QtCore.QThread):
             self.running = False
         while self.running:
             try:
-                s = self.ser.read(self.ser.in_waiting or 1)
+                # s = self.ser.read(self.ser.in_waiting or 1)
+                s = self.ser.readline()
                 if s:  # Get data from serial port
                     self.ser_in(bytes_str(s))  # ..and convert to string
             except:

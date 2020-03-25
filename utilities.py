@@ -13,12 +13,11 @@ def port_options():
     descs = []
     index = []
     for n, (port, desc, hwid) in enumerate(sorted(comports()), 1):
-        sys.stderr.write('--- {:2}: {:20} {!r}\n'.format(n, port, desc))
-        ports.append(port)
-        descs.append(desc)
-        index.append(n)
+        # sys.stdout.write('--- {:2}: {:20} {!r}\n'.format(n, port, desc))
+        # print('--- {:2}: {:20} {!r}\n'.format(n, port, desc))
+        ports.append(f'{port}  {desc}')
 
-    return ports, descs
+    return ports
 
 
 # def _activate_port(port):
