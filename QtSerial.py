@@ -29,14 +29,14 @@ def bytes_str(d):
     return d if type(d) is str else "".join([chr(b) for b in d])
 
 
-# Return hexadecimal values of data
-def hexdump(data):
-    return " ".join(["%02X" % ord(b) for b in data])
+# # Return hexadecimal values of data
+# def hexdump(data):
+#     return " ".join(["%02X" % ord(b) for b in data])
 
 
-# Return a string with high-bit chars replaced by hex values
-def textdump(data):
-    return "".join(["[%02X]" % ord(b) if b > '\x7e' else b for b in data])
+# # Return a string with high-bit chars replaced by hex values
+# def textdump(data):
+#     return "".join(["[%02X]" % ord(b) if b > '\x7e' else b for b in data])
 
 
 # Display incoming serial data
