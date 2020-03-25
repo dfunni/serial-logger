@@ -178,7 +178,7 @@ class SerialThread(QtCore.QThread):
         display(s)
 
     def run(self):                          # Run serial reader thread
-        print(f"Opening {self.portname} at {self.baudrate} baud")
+        # print(f"Opening {self.portname} at {self.baudrate} baud")
         try:
             self.ser = serial.Serial(self.portname,
                                      self.baudrate,
