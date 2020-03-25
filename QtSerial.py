@@ -2,8 +2,8 @@
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout
-from PyQt5.QtWidgets import QTextEdit, QComboBox, QPushButton, QLineEdit, QLabel
-from PyQt5.QtWidgets import QStatusBar, QAction
+from PyQt5.QtWidgets import QTextEdit, QComboBox, QPushButton, QLineEdit
+from PyQt5.QtWidgets import QLabel, QStatusBar, QAction
 import queue as Queue
 
 import sys
@@ -15,21 +15,21 @@ WIN_WIDTH, WIN_HEIGHT = 600, 1000  # Window size
 SER_TIMEOUT = 0.01  # Timeout for serial Rx
 
 
-# # Convert bytes to string
 def bytes_str(d):
+    ''' Convert bytes to string'''
     return d if type(d) is str else "".join([chr(b) for b in d])
 
 
-# Display incoming serial data
 def display(s):
+    ''' Display incoming serial data'''
     sys.stdout.write(s)
 
 
 def port_options():
-    """This function was adapted from the pyserial tool miniterm.py."""
+    """ This function was adapted from the pyserial tool miniterm.py."""
     ports = []
     for port, desc, _ in sorted(comports()):
-        ports.append(f'{port}  {desc}')
+        ports.append(f'{port}  {desc}')  # double space delimited
 
     return ports
 
@@ -101,9 +101,9 @@ class window(QMainWindow):
 
         # Labels
         self.heading1 = QLabel()
-        self.heading1.setText("<strong>Serial Port Connction Options<\strong>")
+        self.heading1.setText("<b>Serial Port Connction Options<\b>")
         self.heading2 = QLabel()
-        self.heading2.setText("<strong>Logging Options<\strong>")
+        self.heading2.setText("<b>Logging Options<\b>")
         self.l1 = QLabel()
         self.l1.setText("Serial Port:")
         self.l2 = QLabel()
@@ -209,13 +209,9 @@ class SerialThread(QtCore.QThread):
 
     def run(self):                          # Run serial reader thread
         # print(f"Opening {self.portname} at {self.baudrate} baud")
-        try:
-            self.ser = serial.Serial(self.portname,
-                                     self.baudrate)
-            time.sleep(SER_TIMEOUT*1.2)
-            self.ser.flushInput()
-        except:
-            self.ser = None
+        self.ser = serial.Serial(self.portname, self.baudrate)
+        time.sleep(SER_TIMEOUT*1.2)
+        self.ser.flushInput()
         if not self.ser:
             print("Cannot open port")
             self.running = False
