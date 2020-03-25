@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from PyQt5 import QtGui, QtCore
-from PyQt5.QtWidgets import QTextEdit, QWidget, QApplication, QVBoxLayout
+from PyQt5.QtWidgets import QTextEdit, QWidget, QApplication, QVBoxLayout, QComboBox, QPushButton, QHBoxLayout
+
 try:
     import Queue
 except:
@@ -17,7 +18,7 @@ SER_TIMEOUT = 0.1  # Timeout for serial Rx
 RETURN_CHAR = "\n"  # Char to be sent when Enter key pressed
 PASTE_CHAR = "\x16"  # Ctrl code for clipboard paste
 baudrate = 9600  # Default baud rate
-portname = ut.port_options()[0][4]  # Default port name
+# portname = ut.port_options()[0][4]  # Default port name
 
 # Convert a string to bytes
 def str_bytes(s):
@@ -74,8 +75,34 @@ class MyWidget(QWidget):
         self.resize(WIN_WIDTH, WIN_HEIGHT)  # Set window size
         self.text_update.connect(self.append_text)  # Connect text update to handler
         sys.stdout = self  # Redirect sys.stdout to self
-        self.serth = SerialThread(portname, baudrate)  # Start serial thread
+
+        ports, descs = ut.port_options()
+        self.portSelect = QComboBox(self)
+        self.portSelect.addItems(ports)
+
+        cnct_btn = QPushButton('Connect', self)
+        cnct_btn.clicked.connect(self.connect)
+        cnct_btn.resize(cnct_btn.sizeHint())
+
+        stop_btn = QPushButton('stop', self)
+        stop_btn.clicked.connect(self.stop)
+        stop_btn.resize(stop_btn.sizeHint())
+
+        layout.addWidget(self.portSelect)
+        layout.addWidget(cnct_btn)
+        layout.addWidget(stop_btn)
+
+        # self.serth = SerialThread(portname, baudrate)  # Start serial thread
+        # self.serth.start()
+
+    def connect(self):
+        self.portname = self.portSelect.currentText()
+        self.serth = SerialThread(self.portname, baudrate)  # Start serial thread
         self.serth.start()
+
+    def stop(self):
+        self.serth.running = False
+        self.serth.exit()
 
     def write(self, text):  # Handle sys.stdout.write: update display
         self.text_update.emit(text)  # Send signal to synchronise call with main thread
@@ -134,12 +161,16 @@ class SerialThread(QtCore.QThread):
             print("Can't open port")
             self.running = False
         while self.running:
-            s = self.ser.read(self.ser.in_waiting or 1)
-            if s:  # Get data from serial port
-                self.ser_in(bytes_str(s))  # ..and convert to string
-            if not self.txq.empty():
-                txd = str(self.txq.get())  # If Tx data in queue, write to serial port
-                self.ser.write(str_bytes(txd))
+            try:
+                s = self.ser.read(self.ser.in_waiting or 1)
+                if s:  # Get data from serial port
+                    self.ser_in(bytes_str(s))  # ..and convert to string
+                # if not self.txq.empty():
+                #     txd = str(self.txq.get())  # If Tx data in queue, write to serial port
+                #     self.ser.write(str_bytes(txd))
+            except:
+                self.running = False
+                break
         if self.ser:  # Close serial port when thread finished
             self.ser.close()
             self.ser = None
