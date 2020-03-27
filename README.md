@@ -23,3 +23,6 @@ usage: cli_serial_logger.py [-h] [-f FILENAME] [-p PORT] [--baudrate BAUDRATE] [
   
   ## qt_serial_logger.py
   PyQt5 based serial logger. This code was adapted from the example on iosoft.blog.
+  
+  ## qt_serial_plotter.py
+  PyQt5 based live plotting of serial data. INCOMPLETE.
