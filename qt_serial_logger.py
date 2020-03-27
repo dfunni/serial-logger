@@ -1,39 +1,19 @@
 #!/usr/bin/env python3
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLayoutItem
 from PyQt5.QtWidgets import QTextEdit, QComboBox, QPushButton, QLineEdit
 from PyQt5.QtWidgets import QLabel, QStatusBar, QAction
+from PyQt5 import QtSerialPort
 import queue as Queue
 
+import os
 import sys
 import time
-import serial
-import random
-import numpy as np
 from serial.tools.list_ports import comports
-
-import matplotlib
-matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-# from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
-from matplotlib.figure import Figure
-
-
-def bytes_str(d):
-    ''' Convert bytes to string'''
-    return d if type(d) is str else "".join([chr(b) for b in d])
-
-
-def port_options():
-    """ This function was adapted from the pyserial tool miniterm.py."""
-    ports = []
-    for port, desc, _ in sorted(comports()):
-        ports.append(f'{port}  {desc}')  # double space delimited
-
-    return ports
-
+import numpy as np
+import pandas as pd
 
 # Main widget
 class Window(QMainWindow):
@@ -43,36 +23,34 @@ class Window(QMainWindow):
 
         self.resize(1200, 800)  # Set window size
 
-        self.ser_connectedF = False
-        self.recordF = False
-
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
+        self.ser = None
 
         # Menu bar
         self.statusBar = QStatusBar()
 
-        self.extractAction = QAction('&Quit', self)
-        self.extractAction.setShortcut('Ctrl+Q')
-        self.extractAction.setStatusTip('exit')
-        self.extractAction.triggered.connect(self.closeEvent)
+        self.quitAction = QAction('&Quit', self)
+        self.quitAction.setShortcut('Ctrl+Q')
+        self.quitAction.setStatusTip('exit')
+        self.quitAction.triggered.connect(self.closeEvent)
 
         self.mainMenu = self.menuBar()
         self.fileMenu = self.mainMenu.addMenu('&File')
-        self.fileMenu.addAction(self.extractAction)
+        self.fileMenu.addAction(self.quitAction)
+        self.editMenu = self.mainMenu.addMenu('&Edit')
 
         # Text boxes
-        self.textbox = QTextEdit(self)
-        self.textbox.setReadOnly(True)
-        # self.text_update.connect(self.append_text)
+        self.display_box = QTextEdit(self)
+        self.display_box.setReadOnly(True)
 
-        self.fnameBox = QLineEdit(self)
-        self.fnameBox.setText("log.txt")
-        self.fnameBox.setMaxLength(50)
+        self.fname_box = QLineEdit(self)
+        self.fname_box.setText("log.txt")
+        self.fname_box.setMaxLength(100)
 
         # Drop-down menus
         self.portSelect = QComboBox(self)
-        self.portSelect.addItems(port_options())
+        self.update_ports()
 
         self.baudSelect = QComboBox(self)
         baud_list = [9600, 14400, 19200, 38400, 57600, 115200, 128000, 256000]
@@ -80,21 +58,21 @@ class Window(QMainWindow):
         self.baudSelect.addItems(baud_list)
 
         # Buttons
-        self.cnct_btn = QPushButton('Connect', self)
-        self.cnct_btn.clicked.connect(self.connect)
-        self.cnct_btn.resize(self.cnct_btn.sizeHint())
+        self.connect_btn = QPushButton(text="Run", 
+                                       checkable=True,
+                                       toggled=self.on_toggled)
 
-        self.record_btn = QPushButton('Record', self)
-        self.record_btn.clicked.connect(self.record_log)
-        self.record_btn.resize(self.record_btn.sizeHint())
+        self.refresh_btn = QPushButton(text="Refresh",
+                                       clicked=self.update_ports)
 
-        self.pause_btn = QPushButton('Pause', self)
-        self.pause_btn.clicked.connect(self.pause_log)
-        self.pause_btn.resize(self.pause_btn.sizeHint())
+        self.delete_btn = QPushButton(text="Delete Log",
+                                      clicked=self.delete)
 
-        self.stop_btn = QPushButton('Disconnect', self)
-        self.stop_btn.clicked.connect(self.stop)
-        self.stop_btn.resize(self.stop_btn.sizeHint())
+        self.open_btn = QPushButton(text="Open Log",
+                                    clicked=self.open_log)
+
+        self.plot_btn = QPushButton(text="Plot Log",
+                                    clicked=self.plot_log)
 
         # Labels
         self.heading1 = QLabel()
@@ -106,115 +84,109 @@ class Window(QMainWindow):
         self.l2 = QLabel()
         self.l2.setText("Baud Rate:")
         self.l3 = QLabel()
-        self.l3.setText("Logfile:       ")
+        self.l3.setText("Logfile:")
 
         # Layout
         self.main = QHBoxLayout()  # main layout
-        self.l_side = QVBoxLayout() 
-        self.portsec = QHBoxLayout()
-        self.cnctsec = QHBoxLayout()
-        self.filesec = QHBoxLayout()
-        self.recdsec = QHBoxLayout()
+        self.left_lay = QVBoxLayout() 
+        self.port_lay = QHBoxLayout()
+        self.baud_lay = QHBoxLayout()
+        self.file_lay = QHBoxLayout()
+        self.cnct_lay = QHBoxLayout()
 
-        self.portsec.addWidget(self.l1)
-        self.portsec.addWidget(self.portSelect)
-        self.portsec.addWidget(self.l2)
-        self.portsec.addWidget(self.baudSelect)
+        self.port_lay.addWidget(self.l1)
+        self.port_lay.addWidget(self.portSelect)
+        self.port_lay.addWidget(self.refresh_btn)
+        self.baud_lay.addWidget(self.l2)
+        self.baud_lay.addWidget(self.baudSelect)
+        self.file_lay.addWidget(self.l3)
+        self.file_lay.addWidget(self.fname_box)
+        self.file_lay.addWidget(self.open_btn)
+        self.file_lay.addWidget(self.delete_btn)
+        self.cnct_lay.addWidget(self.connect_btn)
 
-        self.cnctsec.addWidget(self.cnct_btn)
-        self.cnctsec.addWidget(self.stop_btn)
+        self.left_lay.addLayout(self.port_lay)
+        self.left_lay.addLayout(self.baud_lay)
+        self.left_lay.addLayout(self.file_lay)
+        self.left_lay.addSpacing(20)
+        self.left_lay.addLayout(self.cnct_lay)
+        self.left_lay.addSpacing(20)
+        self.left_lay.addWidget(self.plot_btn)
+        self.left_lay.addStretch()
 
-        self.filesec.addWidget(self.l3)
-        self.filesec.addWidget(self.fnameBox)
-        self.filesec.addStretch()
+        self.main.addLayout(self.left_lay)
+        self.main.addWidget(self.display_box)
 
-        self.recdsec.addWidget(self.record_btn)
-        self.recdsec.addWidget(self.pause_btn)
-
-        self.l_side.addLayout(self.portsec)
-        self.l_side.addLayout(self.cnctsec)
-        self.l_side.addLayout(self.filesec)
-        self.l_side.addLayout(self.recdsec)
-        self.l_side.addStretch()
-
-        self.main.addLayout(self.l_side)
-        self.main.addWidget(self.textbox)
 
         self.centralWidget().setLayout(self.main)
 
     def connect(self):
         self.portname, _ = self.portSelect.currentText().split('  ')
         self.baudrate = self.baudSelect.currentText()
-        self.serth = SerialThread(self.portname, self.baudrate)
-        self.serth.start()
-        self.ser_connectedF = True
-        self.serth.running = True
-        self.serth.signal_str.connect(self.display)
+        self.ser = QtSerialPort.QSerialPort(self.portname,
+                                            baudRate=self.baudrate,
+                                            readyRead=self.receive)
 
-    def record_log(self):
-        if not self.ser_connectedF or not self.serth.running:
+    def update_ports(self):
+        """ This function was adapted from the pyserial tool miniterm.py."""
+        ports = []
+        for port, desc, _ in sorted(comports()):
+            ports.append(f'{port}  {desc}')  # double space delimited
+        self.portSelect.clear()
+        self.portSelect.addItems(ports)
+
+    def delete(self):
+        self.filename = self.fname_box.text()
+        cmd = f'rm {self.filename}'
+        os.system(cmd)
+
+    def open_log(self):
+        self.filename = self.fname_box.text()
+        cmd = f'vim {self.filename}'
+        os.system(cmd)
+
+    def plot_log(self):
+        # r = []
+        # p = []
+        # y = []
+        self.filename = self.fname_box.text()
+        df = pd.read_csv(self.filename, sep='\t',
+                         lineterminator='\n',
+                         names=['t', 'r', 'p', 'y'])
+        for c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors='coerce')
+        df = df.dropna()
+        plt.scatter(df['t'], df['r'], label='roll', marker='.')
+        plt.scatter(df['t'], df['p'], label='pitch', marker='.')
+        plt.scatter(df['t'], df['y'], label='yaw', marker='.')
+        plt.legend()
+        plt.show()
+
+    @QtCore.pyqtSlot()
+    def receive(self):
+        while self.ser.canReadLine():
+            text = self.ser.readLine().data().decode()
+            text = text.rstrip('\r\n')
+            self.display_box.append(text)
+            line = f"{str(time.time())}\t{text}\n"  # append timestamp
+            with open(self.filename, "a") as f:
+                f.write(line)
+                f.close()
+
+    @QtCore.pyqtSlot(bool)
+    def on_toggled(self, checked):
+        self.connect_btn.setText("Stop" if checked else "Run")
+        if checked:
             self.connect()
-        self.filename = self.fnameBox.text()
-        self.recordF = True
-        self.serth.signal_str.connect(self.record)
-
-    def pause_log(self):
-        self.recordF = False
-
-    def stop(self):
-        self.serth.running = False
-        self.serth.exit()
-
-    def display(self, text):  # Text display update handler
-        cur = self.textbox.textCursor()
-        cur.movePosition(QtGui.QTextCursor.End)  # Move cursor to end of text
-        text, _, _ = text.partition('\n')
-        cur.insertText(text)
-        self.textbox.setTextCursor(cur)  # Update visible cursor
-
-    def record(self, text):
-        line = f"{str(time.time())}\t{text}"  # append timestamp
-        with open(self.filename, "a") as f:
-            f.write(line)
-            f.close()
+            self.filename = self.fname_box.text()
+            if not self.ser.isOpen():
+                if not self.ser.open(QtCore.QIODevice.ReadWrite):
+                    self.connect_btn.setChecked(False)
+        else:
+            self.ser.close()
 
     def closeEvent(self, event):  # Window closing, standard Qt syntax
-        if self.ser_connectedF:
-            self.serth.running = False  # Wait until serial thread terminates
-            self.serth.wait()
         sys.exit()
-
-
-# Thread to handle incoming &amp; outgoing serial data
-class SerialThread(QtCore.QThread):
-    signal_str = QtCore.pyqtSignal(str)
-
-    # Initialise with serial port details
-    def __init__(self, portname, baudrate):
-        super(SerialThread, self).__init__()
-        self.portname = portname
-        self.baudrate = baudrate
-        self.txq = Queue.Queue()
-        self.running = True
-
-    def run(self):                          # Run serial reader thread
-        self.ser = serial.Serial(self.portname, self.baudrate, timeout=0.1)
-        self.ser.flushInput()
-        if not self.ser:
-            print("Cannot open port")
-            self.running = False
-        while self.running:
-            try:
-                s = self.ser.readline()
-                # time.sleep(.1)
-                if s:  # Get data from serial port
-                    self.signal_str.emit(bytes_str(s))
-            except:
-                self.running = False
-                break
-        if self.ser:  # Close serial port when thread finished
-            self.ser.close()
-            self.ser = None
 
 
 if __name__ == "__main__":
