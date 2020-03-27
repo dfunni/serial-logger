@@ -116,8 +116,6 @@ class Window(QMainWindow):
 
         self.main.addLayout(self.left_lay)
         self.main.addWidget(self.display_box)
-
-
         self.centralWidget().setLayout(self.main)
 
     def connect(self):
