@@ -66,7 +66,7 @@ class Window(QMainWindow):
                                        clicked=self.update_ports)
 
         self.delete_btn = QPushButton(text="Delete Log",
-                                      clicked=self.delete)
+                                      clicked=self.delete_log)
 
         self.open_btn = QPushButton(text="Open Log",
                                     clicked=self.open_log)
@@ -133,7 +133,7 @@ class Window(QMainWindow):
         self.portSelect.clear()
         self.portSelect.addItems(ports)
 
-    def delete(self):
+    def delete_log(self):
         self.filename = self.fname_box.text()
         cmd = f'rm {self.filename}'
         os.system(cmd)
