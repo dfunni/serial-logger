@@ -11,13 +11,15 @@ with open('log.txt', newline='\n') as f:
 			d.append(r)
 
 d = np.asarray(d)		
-
-print(d.shape)
-
 x = d[:,0]
-plt.scatter(x, d[:,1], label='roll')
-plt.scatter(x, d[:,2], label='pitch')
-plt.scatter(x, d[:,3], label='yaw')
+#plt.scatter(x, d[:,1], label='roll')
+#plt.scatter(x, d[:,2], label='pitch')
+#plt.scatter(x, d[:,3], label='yaw')
+#plt.legend()
+#plt.show()
+		
+plt.plot(x, d[:,1], label='roll')
+plt.plot(x, d[:,2], label='pitch')
+plt.plot(x, d[:,3], label='yaw')
 plt.legend()
 plt.show()
-		

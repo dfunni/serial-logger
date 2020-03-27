@@ -9,20 +9,21 @@ import queue as Queue
 import sys
 import time
 import serial
+import random
+import numpy as np
 from serial.tools.list_ports import comports
 
-WIN_WIDTH, WIN_HEIGHT = 600, 1000  # Window size
-SER_TIMEOUT = 0.01  # Timeout for serial Rx
+import matplotlib
+matplotlib.use('Qt5Agg')
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+# from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
+from matplotlib.figure import Figure
 
 
 def bytes_str(d):
     ''' Convert bytes to string'''
     return d if type(d) is str else "".join([chr(b) for b in d])
-
-
-def display(s):
-    ''' Display incoming serial data'''
-    sys.stdout.write(s)
 
 
 def port_options():
@@ -35,15 +36,12 @@ def port_options():
 
 
 # Main widget
-class window(QMainWindow):
-    text_update = QtCore.pyqtSignal(str)
-    log_update = QtCore.pyqtSignal(str)
+class Window(QMainWindow):
 
     def __init__(self, *args):
-        super(window, self).__init__()
+        super(Window, self).__init__()
 
-        self.resize(WIN_WIDTH, WIN_HEIGHT)  # Set window size
-        sys.stdout = self  # Redirect sys.stdout to self
+        self.resize(1200, 800)  # Set window size
 
         self.ser_connectedF = False
         self.recordF = False
@@ -66,7 +64,7 @@ class window(QMainWindow):
         # Text boxes
         self.textbox = QTextEdit(self)
         self.textbox.setReadOnly(True)
-        self.text_update.connect(self.append_text)
+        # self.text_update.connect(self.append_text)
 
         self.fnameBox = QLineEdit(self)
         self.fnameBox.setText("log.txt")
@@ -89,7 +87,6 @@ class window(QMainWindow):
         self.record_btn = QPushButton('Record', self)
         self.record_btn.clicked.connect(self.record_log)
         self.record_btn.resize(self.record_btn.sizeHint())
-        self.log_update.connect(self.record)
 
         self.pause_btn = QPushButton('Pause', self)
         self.pause_btn.clicked.connect(self.pause_log)
@@ -112,50 +109,54 @@ class window(QMainWindow):
         self.l3.setText("Logfile:       ")
 
         # Layout
-        self.vbox = QVBoxLayout()
-        self.hbox0 = QHBoxLayout()
-        self.hbox1 = QHBoxLayout()
-        self.hbox2 = QHBoxLayout()
-        self.hbox3 = QHBoxLayout()
-        self.centralWidget().setLayout(self.vbox)
+        self.main = QHBoxLayout()  # main layout
+        self.l_side = QVBoxLayout() 
+        self.portsec = QHBoxLayout()
+        self.cnctsec = QHBoxLayout()
+        self.filesec = QHBoxLayout()
+        self.recdsec = QHBoxLayout()
 
-        self.hbox0.addWidget(self.l1)
-        self.hbox0.addWidget(self.portSelect)
-        self.hbox0.addWidget(self.l2)
-        self.hbox0.addWidget(self.baudSelect)
+        self.portsec.addWidget(self.l1)
+        self.portsec.addWidget(self.portSelect)
+        self.portsec.addWidget(self.l2)
+        self.portsec.addWidget(self.baudSelect)
 
-        self.hbox1.addWidget(self.cnct_btn)
-        self.hbox1.addWidget(self.stop_btn)
+        self.cnctsec.addWidget(self.cnct_btn)
+        self.cnctsec.addWidget(self.stop_btn)
 
-        self.hbox2.addWidget(self.l3)
-        self.hbox2.addWidget(self.fnameBox)
-        self.hbox2.addStretch()
+        self.filesec.addWidget(self.l3)
+        self.filesec.addWidget(self.fnameBox)
+        self.filesec.addStretch()
 
-        self.hbox3.addWidget(self.record_btn)
-        self.hbox3.addWidget(self.pause_btn)
+        self.recdsec.addWidget(self.record_btn)
+        self.recdsec.addWidget(self.pause_btn)
 
-        self.vbox.addWidget(self.textbox)
-        self.vbox.addWidget(self.heading1)
-        self.vbox.addLayout(self.hbox0)
-        self.vbox.addLayout(self.hbox1)
-        self.vbox.addWidget(self.heading2)
-        self.vbox.addLayout(self.hbox2)
-        self.vbox.addLayout(self.hbox3)
+        self.l_side.addLayout(self.portsec)
+        self.l_side.addLayout(self.cnctsec)
+        self.l_side.addLayout(self.filesec)
+        self.l_side.addLayout(self.recdsec)
+        self.l_side.addStretch()
+
+        self.main.addLayout(self.l_side)
+        self.main.addWidget(self.textbox)
+
+        self.centralWidget().setLayout(self.main)
 
     def connect(self):
         self.portname, _ = self.portSelect.currentText().split('  ')
         self.baudrate = self.baudSelect.currentText()
         self.serth = SerialThread(self.portname, self.baudrate)
-        self.serth.running = True
-        self.ser_connectedF = True
         self.serth.start()
+        self.ser_connectedF = True
+        self.serth.running = True
+        self.serth.signal_str.connect(self.display)
 
     def record_log(self):
         if not self.ser_connectedF or not self.serth.running:
             self.connect()
         self.filename = self.fnameBox.text()
-        self.serth.record = True
         self.recordF = True
+        self.serth.signal_str.connect(self.record)
 
     def pause_log(self):
         self.recordF = False
@@ -164,24 +165,15 @@ class window(QMainWindow):
         self.serth.running = False
         self.serth.exit()
 
-    def write(self, text):  # Handle sys.stdout.write: update display
-        # Send signal to synchronise call with main thread
-        self.text_update.emit(text)
-        if self.recordF:
-            self.log_update.emit(text)
-
-    def append_text(self, text):  # Text display update handler
+    def display(self, text):  # Text display update handler
         cur = self.textbox.textCursor()
         cur.movePosition(QtGui.QTextCursor.End)  # Move cursor to end of text
-        s = str(text)
-        while s:
-            head, sep, s = s.partition("\n")  # Split line at LF
-            cur.insertText(head)  # Insert text at cursor
+        text, _, _ = text.partition('\n')
+        cur.insertText(text)
         self.textbox.setTextCursor(cur)  # Update visible cursor
 
     def record(self, text):
-        line = f"{str(time.time())}\t{text}"
-        # print(line)
+        line = f"{str(time.time())}\t{text}"  # append timestamp
         with open(self.filename, "a") as f:
             f.write(line)
             f.close()
@@ -195,6 +187,8 @@ class window(QMainWindow):
 
 # Thread to handle incoming &amp; outgoing serial data
 class SerialThread(QtCore.QThread):
+    signal_str = QtCore.pyqtSignal(str)
+
     # Initialise with serial port details
     def __init__(self, portname, baudrate):
         super(SerialThread, self).__init__()
@@ -202,25 +196,19 @@ class SerialThread(QtCore.QThread):
         self.baudrate = baudrate
         self.txq = Queue.Queue()
         self.running = True
-        # self.record = False
-
-    def ser_in(self, s):  # Write incoming serial data to screen
-        display(s)
 
     def run(self):                          # Run serial reader thread
-        # print(f"Opening {self.portname} at {self.baudrate} baud")
-        self.ser = serial.Serial(self.portname, self.baudrate)
-        time.sleep(SER_TIMEOUT*1.2)
+        self.ser = serial.Serial(self.portname, self.baudrate, timeout=0.1)
         self.ser.flushInput()
         if not self.ser:
             print("Cannot open port")
             self.running = False
         while self.running:
             try:
-                # s = self.ser.read(self.ser.in_waiting or 1)
                 s = self.ser.readline()
+                # time.sleep(.1)
                 if s:  # Get data from serial port
-                    self.ser_in(bytes_str(s))  # ..and convert to string
+                    self.signal_str.emit(bytes_str(s))
             except:
                 self.running = False
                 break
@@ -231,7 +219,7 @@ class SerialThread(QtCore.QThread):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    w = window()
+    w = Window()
     w.setWindowTitle('PyQT Serial Terminal')
     w.show()
     sys.exit(app.exec_())
