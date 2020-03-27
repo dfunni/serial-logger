@@ -1,6 +1,6 @@
 # serial-logger
 
-This repository contains both a command line serial logging program and a GUI program with the same functionalitly. The goal of this project is to enable viewing and logging of recieved serial messages while experimenting with PyQt5 based GUI development.
+This repository contains both a command line serial logging program and a GUI program with the same functionalitly. The goal of this project is to enable viewing and logging of recieved serial messages while experimenting with PyQt5 based GUI development. Plotting functions are designed to display gyroscope values read from an Arduino Nano 33 IoT.
 
 ## cli_serial_logger.py
 Command line logger of serial data to file. This code relies heavily on pyserial by Chris Liechti. (https://github.com/pyserial/pyserial)
