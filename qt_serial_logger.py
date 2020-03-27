@@ -75,10 +75,6 @@ class Window(QMainWindow):
                                     clicked=self.plot_log)
 
         # Labels
-        self.heading1 = QLabel()
-        self.heading1.setText("<b>Serial Port Connction Options<\b>")
-        self.heading2 = QLabel()
-        self.heading2.setText("<b>Logging Options<\b>")
         self.l1 = QLabel()
         self.l1.setText("Serial Port:")
         self.l2 = QLabel()
