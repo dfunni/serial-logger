@@ -144,9 +144,6 @@ class Window(QMainWindow):
         os.system(cmd)
 
     def plot_log(self):
-        # r = []
-        # p = []
-        # y = []
         self.filename = self.fname_box.text()
         df = pd.read_csv(self.filename, sep='\t',
                          lineterminator='\n',
