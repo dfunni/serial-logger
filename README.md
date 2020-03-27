@@ -22,4 +22,7 @@ usage: cli_serial_logger.py [-h] [-f FILENAME] [-p PORT] [--baudrate BAUDRATE] [
   --rtscts :         bool, enable hardware (RTS/CTS) flow control (default=False)<br />
   
   ## qt_serial_logger.py
-  PyQt5 based serial logger. This code was adapted from the example on iosoft.blog.
+  PyQt5 based serial logger.
+  
+  ## qt_serial_plotter.py
+  PyQt5 based live plotting of serial data. INCOMPLETE.
