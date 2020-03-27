@@ -2,10 +2,10 @@
 
 This repository contains both a command line serial logging program and a GUI program with the same functionalitly. The goal of this project is to enable viewing and logging of recieved serial messages while experimenting with PyQt5 based GUI development.
 
-## serial_logger.py
+## cli_serial_logger.py
 Command line logger of serial data to file. This code relies heavily on pyserial by Chris Liechti. (https://github.com/pyserial/pyserial)
 
-usage: serial_logger.py [-h] [-f FILENAME] [-p PORT] [--baudrate BAUDRATE] [--bytesize BYTESIZE]<br />
+usage: cli_serial_logger.py [-h] [-f FILENAME] [-p PORT] [--baudrate BAUDRATE] [--bytesize BYTESIZE]<br />
        [--parity PARITY] [--stopbits STOPBITS] [--timeout TIMEOUT] [--xonxoff XONXOFF]<br />
        [--rtscts RTSCTS]
        
@@ -21,5 +21,5 @@ usage: serial_logger.py [-h] [-f FILENAME] [-p PORT] [--baudrate BAUDRATE] [--by
   --xonxoff :        bool, enable software flow control (default=False)<br />
   --rtscts :         bool, enable hardware (RTS/CTS) flow control (default=False)<br />
   
-  ## QtSerial.py
+  ## qt_serial_logger.py
   PyQt5 based serial logger. This code was adapted from the example on iosoft.blog.
