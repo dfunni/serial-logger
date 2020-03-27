@@ -37,9 +37,10 @@ def port_options():
 
 # Main widget
 class Window(QMainWindow):
+    # send_fig = pyqtSignal(Axes, str, name="send_fig")  # is this needed?
 
     def __init__(self, *args):
-        super(Window, self).__init__()
+        super(window, self).__init__()
 
         self.resize(1200, 800)  # Set window size
 
@@ -48,6 +49,11 @@ class Window(QMainWindow):
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
+
+        self.plotth = PlotThread()
+        self.graph = MplCanvas(self)
+        self.plotter = None
+        self.plotth = None
 
         # Menu bar
         self.statusBar = QStatusBar()
@@ -82,11 +88,13 @@ class Window(QMainWindow):
         # Buttons
         self.cnct_btn = QPushButton('Connect', self)
         self.cnct_btn.clicked.connect(self.connect)
+        self.cnct_btn.clicked.connect(self.update_plot)
         self.cnct_btn.resize(self.cnct_btn.sizeHint())
 
         self.record_btn = QPushButton('Record', self)
         self.record_btn.clicked.connect(self.record_log)
         self.record_btn.resize(self.record_btn.sizeHint())
+        # self.log_update.connect(self.record)
 
         self.pause_btn = QPushButton('Pause', self)
         self.pause_btn.clicked.connect(self.pause_log)
@@ -131,6 +139,7 @@ class Window(QMainWindow):
         self.recdsec.addWidget(self.record_btn)
         self.recdsec.addWidget(self.pause_btn)
 
+        self.l_side.addWidget(self.graph)
         self.l_side.addLayout(self.portsec)
         self.l_side.addLayout(self.cnctsec)
         self.l_side.addLayout(self.filesec)
@@ -142,6 +151,34 @@ class Window(QMainWindow):
 
         self.centralWidget().setLayout(self.main)
 
+        n_data = 500
+        self.xdata = list(range(n_data))
+        self.rdata = np.zeros(n_data, dtype=np.float64).tolist()
+        self.pdata = np.zeros(n_data, dtype=np.float64).tolist()
+        self.ydata = np.zeros(n_data, dtype=np.float64).tolist()
+
+        self._plot_refr = None
+        self._plot_refp = None
+        self._plot_refy = None
+
+    def update_plot(self):
+
+        # if there is already a thread running, kill it first
+        if self.plotth != None and self.plotth.isRunning():
+            self.plotth.terminate()
+
+        self.plotter = Plotter()
+        self.plotth = QThread()
+
+        # connect signals
+        self.send_fig.connect(self.plotter.replot)
+        self.plotter.return_fig.connect(self.graph.updata_plot)
+        # move to thread and start
+        self.plotter.moveToThread(self.plotth)
+        self.plotth.start()
+        # start the plotting
+        self.send_fig.emit(self.graph.axes)
+
     def connect(self):
         self.portname, _ = self.portSelect.currentText().split('  ')
         self.baudrate = self.baudSelect.currentText()
@@ -150,6 +187,7 @@ class Window(QMainWindow):
         self.ser_connectedF = True
         self.serth.running = True
         self.serth.signal_str.connect(self.display)
+        # self.serth.signal_str.connect(self.plot)
 
     def record_log(self):
         if not self.ser_connectedF or not self.serth.running:
@@ -178,11 +216,141 @@ class Window(QMainWindow):
             f.write(line)
             f.close()
 
+    # def plot(self, text):
+    #     text, _, _ = text.partition('\n')
+    #     try:
+    #         data = text.split("\t")
+    #         [roll, pitch, yaw] = data
+    #     except:
+    #         [roll, pitch, yaw] = [20, 0, 0]
+    #     # Drop off the first y element, append a new one.
+    #     self.rdata = self.rdata[1:] + [np.float64(roll)]
+    #     self.pdata = self.pdata[1:] + [np.float64(pitch)]
+    #     self.ydata = self.ydata[1:] + [np.float64(yaw)]
+
+    #     # Note: we no longer need to clear the axis.
+    #     if self._plot_refr is None:
+    #         # First time we have no plot reference, so do a normal plot.
+    #         # .plot returns a list of line <reference>s, as we're
+    #         # only getting one we can take the first element.
+    #         plot_refsr = self.graph.axes.plot(self.xdata, self.rdata)
+    #         plot_refsp = self.graph.axes.plot(self.xdata, self.pdata)
+    #         plot_refsy = self.graph.axes.plot(self.xdata, self.ydata)
+    #         self._plot_refr = plot_refsr[0]
+    #         self._plot_refp = plot_refsp[0]
+    #         self._plot_refy = plot_refsy[0]
+    #     else:
+    #         # We have a reference, we can use it to update the data for that line.
+    #         self._plot_refr.set_ydata(self.rdata)
+    #         self._plot_refp.set_ydata(self.pdata)
+    #         self._plot_refy.set_ydata(self.ydata)
+            
+
+    #     # Trigger the canvas to update and redraw.
+    #     self.graph.draw()
+
     def closeEvent(self, event):  # Window closing, standard Qt syntax
         if self.ser_connectedF:
             self.serth.running = False  # Wait until serial thread terminates
             self.serth.wait()
         sys.exit()
+
+
+class MplCanvas(FigureCanvasQTAgg):
+    send_fig = QtCore.pyqtSignal(axes, str, name="send_fig")
+
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        super(MplCanvas, self).__init__(self.fig)
+
+        self.fig = Figure()
+        self.axes = fig.add_subplot(111)
+        self.axes.hold(False)  # added
+        self.axes.set_ylim([-360, 360])
+
+    def updata_plot(self, axes):  # added
+        self.axes = axes
+        self.draw()
+
+
+class Plotter(QObject):
+    return_fig = QtCore.pyqtSignal(object)
+    def __init__(self):
+        self._plot_refr = None
+        self._plot_refp = None
+        self._plot_refy = None
+
+    @pyqtSlot(str)
+    def replot(self, text):
+        text, _, _ = text.partition('\n')
+        try:
+            data = text.split("\t")
+            [roll, pitch, yaw] = data
+        except:
+            [roll, pitch, yaw] = [20, 0, 0]
+        # Drop off the first y element, append a new one.
+        self.rdata = self.rdata[1:] + [np.float64(roll)]
+        self.pdata = self.pdata[1:] + [np.float64(pitch)]
+        self.ydata = self.ydata[1:] + [np.float64(yaw)]
+
+        # Note: we no longer need to clear the axis.
+        if self._plot_refr is None:
+            # First time we have no plot reference, so do a normal plot.
+            # .plot returns a list of line <reference>s, as we're
+            # only getting one we can take the first element.
+            plot_refsr = self.graph.axes.plot(self.xdata, self.rdata)
+            plot_refsp = self.graph.axes.plot(self.xdata, self.pdata)
+            plot_refsy = self.graph.axes.plot(self.xdata, self.ydata)
+            self._plot_refr = plot_refsr[0]
+            self._plot_refp = plot_refsp[0]
+            self._plot_refy = plot_refsy[0]
+        else:
+            # We have a reference, we can use it to update the data for that line.
+            self._plot_refr.set_ydata(self.rdata)
+            self._plot_refp.set_ydata(self.pdata)
+            self._plot_refy.set_ydata(self.ydata)
+            
+
+        # Trigger the canvas to update and redraw.
+        self.return_fig.emit(data)
+
+
+class PlotThread(QtCore.QThread):
+
+    def __init__(self):
+        self.graph = MplCanvas(self)
+
+    def plot(self, text):
+        text, _, _ = text.partition('\n')
+        try:
+            data = text.split("\t")
+            [roll, pitch, yaw] = data
+        except:
+            [roll, pitch, yaw] = [20, 0, 0]
+        # Drop off the first y element, append a new one.
+        self.rdata = self.rdata[1:] + [np.float64(roll)]
+        self.pdata = self.pdata[1:] + [np.float64(pitch)]
+        self.ydata = self.ydata[1:] + [np.float64(yaw)]
+
+        # Note: we no longer need to clear the axis.
+        if self._plot_refr is None:
+            # First time we have no plot reference, so do a normal plot.
+            # .plot returns a list of line <reference>s, as we're
+            # only getting one we can take the first element.
+            plot_refsr = self.graph.axes.plot(self.xdata, self.rdata)
+            plot_refsp = self.graph.axes.plot(self.xdata, self.pdata)
+            plot_refsy = self.graph.axes.plot(self.xdata, self.ydata)
+            self._plot_refr = plot_refsr[0]
+            self._plot_refp = plot_refsp[0]
+            self._plot_refy = plot_refsy[0]
+        else:
+            # We have a reference, we can use it to update the data for that line.
+            self._plot_refr.set_ydata(self.rdata)
+            self._plot_refp.set_ydata(self.pdata)
+            self._plot_refy.set_ydata(self.ydata)
+
+
+        # Trigger the canvas to update and redraw.
+        self.graph.draw()
 
 
 # Thread to handle incoming &amp; outgoing serial data
