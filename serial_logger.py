@@ -123,7 +123,7 @@ if __name__ == "__main__":
     parser.add_argument('-nl', '--no_log', help="Do not log data to file",
                         action='store_true')
     parser.add_argument('-f', '--filename', type=str, help='ouput filename',
-                        default='log.txt')
+                        default='log.log')
     parser.add_argument('-p', '--port', type=str,
                         help="""port name, default None. If None the user will
                         be asked to select a port from a list.""", 

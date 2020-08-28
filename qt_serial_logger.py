@@ -45,7 +45,7 @@ class Window(QMainWindow):
         self.display_box.setReadOnly(True)
 
         self.fname_box = QLineEdit(self)
-        self.fname_box.setText("log.txt")
+        self.fname_box.setText("log.log")
         self.fname_box.setMaxLength(100)
 
         # Drop-down menus
