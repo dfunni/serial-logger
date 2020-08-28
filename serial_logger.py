@@ -15,7 +15,7 @@ def _ask_for_port():
         sys.stderr.write('--- {:2}: {:20} {!r}\n'.format(n, port, desc))
         ports.append(port)
 
-    port = input('Press Ctrl+C to exit\n--- Enter port index or name:')
+    port = input('Press Ctrl+C to exit\n--- Enter port index or name: ')
     try:
         index = int(port) - 1
         if not 0 <= index < len(ports):
@@ -26,9 +26,8 @@ def _ask_for_port():
         print(f"ValueError: invalid input")
         sys.exit(1)
     else:
-        port = ports[index]
-#            _activate_port(port)
-    return port
+        return ports[index]
+
 
 
 # def _activate_port(port):
@@ -41,6 +40,39 @@ def _ask_for_port():
 #        print('running command: ' + cmd)
 #        os.system(cmd)
 #    print("Port open!")
+
+
+def print_stream(port, baudrate=9600,  bytesize=8, parity="NONE", 
+                 stopbits=1, timeout=None, xonxoff=False,  rtscts=False):
+    """This is the default function of this program, prints data recieved over
+    serial bus as ascii text to terminal
+
+    Keyword arguments:
+    port     -- serial port for connection
+    baudrate -- baudrate of serial port
+    bytesize -- size of a byte
+    parity   -- parity checking, options: NONE, EVEN, ODD, MARK, SPACE
+    stopbits -- number of stop bits
+    timeout  -- read timeout in seconds
+    xonxoff  -- enable software flow control
+    rtcts    -- enable hardware flow control
+    """
+
+    ser = serial.Serial(port, baudrate, bytesize, parity, stopbits, timeout,
+                        xonxoff, rtscts)
+    ser.baudrate = baudrate
+    ser.flushInput()
+
+    while True:
+        try:
+            ser_bytes = ser.readline()
+            decoded_bytes = ser_bytes[0:len(ser_bytes)-2].decode("utf-8")
+            line = str(time.time()) + '\t' + decoded_bytes
+            print(line)
+        except KeyboardInterrupt:
+            print("\nKeyboard Interrupt")
+            ser.close()
+            break
 
 
 def log(filename, port, baudrate=9600,  bytesize=8, parity="NONE",  stopbits=1,
@@ -83,10 +115,13 @@ def log(filename, port, baudrate=9600,  bytesize=8, parity="NONE",  stopbits=1,
 
 if __name__ == "__main__":
 
-    description = """Simple read from serial port and saves to text file.\n"""
+    description = """Simple read from serial port and saves to text file.
+    To log to file"""
 
     parser = argparse.ArgumentParser(description)
 
+    parser.add_argument('-nl', '--no_log', help="Do not log data to file",
+                        action='store_true')
     parser.add_argument('-f', '--filename', type=str, help='ouput filename',
                         default='log.txt')
     parser.add_argument('-p', '--port', type=str,
@@ -113,13 +148,13 @@ if __name__ == "__main__":
     parser.add_argument('--timeout', type=float,
                         help="Set a read timeout value.",
                         default=None)
-    parser.add_argument('--xonxoff', type=bool,
-                        help="Enable software flow control. Default=False",
-                        default=False)
-    parser.add_argument('--rtscts', type=bool,
-                        help="""Enable hardware (RTS/CTS) flow control.
-                        Default=False""",
-                        default=False)
+    parser.add_argument('-x', '--xonxoff',
+                        help="Software flow control flag",
+                        action='store_false')
+    parser.add_argument('-r', '--rtscts',
+                        help="""Hardware (RTS/CTS) flow control flag.
+                        """,
+                        action='store_false')
 
     args = parser.parse_args()
 
@@ -134,6 +169,13 @@ if __name__ == "__main__":
     if args.port is None:
         args.port = _ask_for_port()
 
-    log(args.filename, args.port, args.baudrate, args.bytesize,
-        args.parity, args.stopbits, args.timeout, args.xonxoff,
-        args.rtscts)
+    if args.no_log:
+        print_stream(args.port, args.baudrate, args.bytesize,
+                     args.parity, args.stopbits, args.timeout, args.xonxoff,
+                     args.rtscts)
+
+    else:
+        log(args.filename, args.port, args.baudrate, args.bytesize,
+            args.parity, args.stopbits, args.timeout, args.xonxoff,
+            args.rtscts)
+        
