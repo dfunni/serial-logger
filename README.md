@@ -2,7 +2,7 @@
 
 This repository contains both a command line serial logging program and a GUI program with the same functionalitly. The goal of this project is to enable viewing and logging of serial messages while experimenting with PyQt5 based GUI development. Plotting functions are designed to display gyroscope values read from an Arduino Nano 33 IoT.
 
-## cli_serial_logger.py
+## serial_logger.py
 Command line logger of serial data to file. This code relies heavily on pyserial by Chris Liechti. (https://github.com/pyserial/pyserial)
 
 usage: cli_serial_logger.py [-h] [-f FILENAME] [-p PORT] [--baudrate BAUDRATE] [--bytesize BYTESIZE]<br />
@@ -27,4 +27,4 @@ usage: cli_serial_logger.py [-h] [-f FILENAME] [-p PORT] [--baudrate BAUDRATE] [
   PyQt5 based serial logger.
   
   ## qt_serial_plotter.py
-  PyQt5 based live plotting of serial data. INCOMPLETE.
+  INCOMPLETE PyQt5 based live plotting of serial data INCOMPLETE
