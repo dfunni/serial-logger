@@ -165,13 +165,16 @@ class Window(QMainWindow):
     @QtCore.pyqtSlot()
     def receive(self):
         while self.ser.canReadLine():
-            text = self.ser.readLine().data().decode()
-            text = text.rstrip('\r\n')
-            self.display_box.append(text)
-            line = f"{str(time.time())}\t{text}\n"  # append timestamp
-            with open(self.filename, "a") as f:
-                f.write(line)
-                f.close()
+            try:
+                text = self.ser.readLine().data().decode()
+                text = text.rstrip('\r\n')
+                self.display_box.append(text)
+                line = f"{str(time.time())}\t{text}\n"  # append timestamp
+                with open(self.filename, "a") as f:
+                    f.write(line)
+                    f.close()
+            except UnicodeDecodeError:
+                pass
 
     @QtCore.pyqtSlot(bool)
     def on_toggled(self, checked):
