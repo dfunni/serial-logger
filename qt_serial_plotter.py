@@ -42,6 +42,8 @@ class Window(QMainWindow):
     def __init__(self, *args):
         super(window, self).__init__()
 
+        self.initUI()
+
         self.resize(1200, 800)  # Set window size
 
         self.ser_connectedF = False
@@ -160,6 +162,12 @@ class Window(QMainWindow):
         self._plot_refr = None
         self._plot_refp = None
         self._plot_refy = None
+
+    def initUI(self):
+        self.setWindowTitle('Icon')
+        self.setWindowIcon(QIcon('serial.svg'))        
+    
+        self.show()
 
     def update_plot(self):
 

@@ -29,33 +29,20 @@ def _ask_for_port():
         return ports[index]
 
 
-
-# def _activate_port(port):
-#    """This function ensures serial port is activated in linux."""
-#    port_permissions = subprocess.check_output('ls -la ' + port,
-#                                               shell=True)[7:10].decode('utf-8')
-#    if port_permissions == '---':
-#        cmd = 'sudo chmod 664 ' + port
-#        print("Port needs to be enabled...")
-#        print('running command: ' + cmd)
-#        os.system(cmd)
-#    print("Port open!")
-
-
 def print_stream(port, baudrate=9600,  bytesize=8, parity="NONE", 
                  stopbits=1, timeout=None, xonxoff=False,  rtscts=False):
     """This is the default function of this program, prints data recieved over
     serial bus as ascii text to terminal
 
-    Keyword arguments:
-    port     -- serial port for connection
-    baudrate -- baudrate of serial port
-    bytesize -- size of a byte
-    parity   -- parity checking, options: NONE, EVEN, ODD, MARK, SPACE
-    stopbits -- number of stop bits
-    timeout  -- read timeout in seconds
-    xonxoff  -- enable software flow control
-    rtcts    -- enable hardware flow control
+    Arguments:
+        port (str)      serial port for connection
+        baudrate (int) baudrate of serial port
+        bytesize (int) size of a byte
+        parity   (str) parity checking, options: NONE, EVEN, ODD, MARK, SPACE
+        stopbits () number of stop bits
+        timeout  -- read timeout in seconds
+        xonxoff  -- enable software flow control
+        rtcts    -- enable hardware flow control
     """
 
     ser = serial.Serial(port, baudrate, bytesize, parity, stopbits, timeout,
@@ -73,6 +60,8 @@ def print_stream(port, baudrate=9600,  bytesize=8, parity="NONE",
             print("\nKeyboard Interrupt")
             ser.close()
             break
+        except UnicodeDecodeError:
+            pass
 
 
 def log(filename, port, baudrate=9600,  bytesize=8, parity="NONE",  stopbits=1,
@@ -111,6 +100,8 @@ def log(filename, port, baudrate=9600,  bytesize=8, parity="NONE",  stopbits=1,
             print("\nKeyboard Interrupt")
             ser.close()
             break
+        except UnicodeDecodeError:
+            pass
 
 
 if __name__ == "__main__":
@@ -164,7 +155,7 @@ if __name__ == "__main__":
                   'MARK': serial.PARITY_MARK,
                   'SPACE': serial.PARITY_SPACE}
 
-    args.parity = parity_map[args.parity]
+    args.parity = parity_map.get(args.parity, 'NONE')
 
     if args.port is None:
         args.port = _ask_for_port()

@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLayoutItem
 from PyQt5.QtWidgets import QTextEdit, QComboBox, QPushButton, QLineEdit
 from PyQt5.QtWidgets import QLabel, QStatusBar, QAction
 from PyQt5 import QtSerialPort
+from PyQt5.QtGui import QIcon
 import queue as Queue
 
 import os
@@ -20,6 +21,8 @@ class Window(QMainWindow):
 
     def __init__(self, *args):
         super(Window, self).__init__()
+        
+        self.initUI()
 
         self.resize(1200, 800)  # Set window size
 
@@ -113,6 +116,12 @@ class Window(QMainWindow):
         self.main.addLayout(self.left_lay)
         self.main.addWidget(self.display_box)
         self.centralWidget().setLayout(self.main)
+
+    def initUI(self):
+        self.setWindowTitle('Icon')
+        self.setWindowIcon(QIcon('serial.svg'))        
+    
+        self.show()
 
     def connect(self):
         self.portname, _ = self.portSelect.currentText().split('  ')
