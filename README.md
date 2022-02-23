@@ -28,3 +28,9 @@ usage: cli_serial_logger.py [-h] [-f FILENAME] [-p PORT] [--baudrate BAUDRATE] [
   
   ## qt_serial_plotter.py
   INCOMPLETE PyQt5 based live plotting of serial data INCOMPLETE
+  
+### Troubleshooting
+If an error on QtSerialPort occurs run:
+
+       sudo apt-get install python3-pyqt5.qtserialport
+
